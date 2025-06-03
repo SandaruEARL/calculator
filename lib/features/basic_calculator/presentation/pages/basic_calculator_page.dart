@@ -292,14 +292,16 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
 
           CalculatorButton(
             width: 50,
+            height: 30,
             icon: Icons.close,
-            iconSize: 30,
+            iconSize: 20,
             iconColor: Colors.white,
             backgroundColor: Colors.orange,
             shape: ButtonShape.arrow,
             arrowWidth: 50,
             arrowDirection: ArrowDirection.left,
             enableTouchEffect: false,
+            borderRadius: 3,
             text: "",
             onPressed: basicVM.onBackspacePressed,
             isExpandedMode: _showExpandedButtons,
