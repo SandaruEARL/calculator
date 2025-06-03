@@ -87,19 +87,19 @@ class ExpressionUtils {
 
     // Convert square root
     converted = converted.replaceAllMapped(
-      RegExp(r'sqrt\(([^)]+)\)'),
+      RegExp(r'√\(([^)]+)\)'),
           (match) {
         final value = match.group(1)!;
-        return 'sqrt($value)';
+        return '√($value)';
       },
     );
 
     // Convert cube root
     converted = converted.replaceAllMapped(
-      RegExp(r'cbrt\(([^)]+)\)'),
+      RegExp(r'³√\(([^)]+)\)'),
           (match) {
         final value = match.group(1)!;
-        return 'cbrt($value)';
+        return '³√($value)';
       },
     );
 
@@ -236,7 +236,7 @@ class ExpressionUtils {
 
   static bool _hasValidFunctionCalls(String expression) {
     // Check if all function calls have proper syntax
-    final functionPattern = RegExp(r'(sin|cos|tan|ln|log|sqrt|cbrt|factorial|pow)\s*\(');
+    final functionPattern = RegExp(r'(sin|cos|tan|ln|log|√|³√|factorial|pow)\s*\(');
     final matches = functionPattern.allMatches(expression);
 
     for (final match in matches) {
@@ -315,13 +315,13 @@ class ExpressionUtils {
 
   /// Get function suggestions based on input
   static List<String> getFunctionSuggestions(String input) {
-    final functions = ['sin', 'cos', 'tan', 'ln', 'log', 'sqrt', 'cbrt'];
+    final functions = ['sin', 'cos', 'tan', 'ln', 'log', '√', '³√'];
     return functions.where((func) => func.startsWith(input.toLowerCase())).toList();
   }
 
   /// Check if expression contains scientific functions
   static bool hasScientificFunctions(String expression) {
-    final scientificPattern = RegExp(r'(sin|cos|tan|ln|log|sqrt|cbrt|factorial|pow|\^|!|π|e|φ)');
+    final scientificPattern = RegExp(r'(sin|cos|tan|ln|log|√|³√|factorial|pow|\^|!|π|e|φ)');
     return scientificPattern.hasMatch(expression);
   }
 }

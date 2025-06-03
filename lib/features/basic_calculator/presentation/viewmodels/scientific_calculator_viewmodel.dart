@@ -83,26 +83,14 @@ class ScientificCalculatorViewModel extends ChangeNotifier {
         return 'cos(';
       case 'tan':
         return 'tan(';
-      case 'asin':
-        return 'asin(';
-      case 'acos':
-        return 'acos(';
-      case 'atan':
-        return 'atan(';
       case 'ln':
         return 'ln(';
       case 'log':
         return 'log(';
       case '√':
-        return 'sqrt(';
+        return '√(';
       case '∛':
-        return 'cbrt(';
-      case 'sinh':
-        return 'sinh(';
-      case 'cosh':
-        return 'cosh(';
-      case 'tanh':
-        return 'tanh(';
+        return '∛(';
       default:
         return '';
     }
@@ -116,12 +104,6 @@ class ScientificCalculatorViewModel extends ChangeNotifier {
         return 'cos(';
       case 'tan':
         return 'tan(';
-      case 'asin':
-        return 'sin⁻¹(';
-      case 'acos':
-        return 'cos⁻¹(';
-      case 'atan':
-        return 'tan⁻¹(';
       case 'ln':
         return 'ln(';
       case 'log':
@@ -130,12 +112,6 @@ class ScientificCalculatorViewModel extends ChangeNotifier {
         return '√(';
       case '∛':
         return '∛(';
-      case 'sinh':
-        return 'sinh(';
-      case 'cosh':
-        return 'cosh(';
-      case 'tanh':
-        return 'tanh(';
       default:
         return function;
     }

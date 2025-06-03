@@ -1,10 +1,10 @@
 // presentation/viewmodels/basic_calculator_viewmodel.dart
+
 import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-
-import '../../../../core/utils/expression_formatter.dart';
-import '../../../../core/utils/result_formatter.dart';
+import '../../core/utils/expression_formatter.dart';
+import '../../core/utils/result_formatter.dart';
 import '../../domain/entities/calculation.dart';
 import '../../domain/usecases/calculate.dart';
 import '../../domain/usecases/calculate_live.dart';
@@ -293,6 +293,7 @@ class BasicCalculatorViewModel extends ChangeNotifier {
     _shouldResetDisplay = false;
     _liveResult = '';
     notifyListeners();
+
   }
 
   void onBackspacePressed() {
