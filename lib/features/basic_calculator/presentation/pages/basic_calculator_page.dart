@@ -194,7 +194,7 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
 
                     _buildExpandedButtonRow([
                       _buildExpandedButton('!', () => _handleFactorial(basicVM, sciVM), ButtonType.function),
-                      _buildExpandedButton('∛', () => _handleScientificFunction('∛', basicVM, sciVM), ButtonType.function),
+                      _buildExpandedButton('³√', () => _handleScientificFunction('³√', basicVM, sciVM), ButtonType.function),
                       _buildExpandedButton('√', () => _handleScientificFunction('√', basicVM, sciVM), ButtonType.function),
                       _buildExpandedButton('^', () => basicVM.onOperatorPressed('^'), ButtonType.operator),
                     ]),
@@ -266,7 +266,7 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
   Widget _buildSwapAndBackspaceRow(BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
     return Container(
       height: 48,
-      margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Minimal horizontal margin
+      margin: EdgeInsets.symmetric(vertical: 4, horizontal: 10), // Minimal horizontal margin
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center, // Center align all children
         children: [

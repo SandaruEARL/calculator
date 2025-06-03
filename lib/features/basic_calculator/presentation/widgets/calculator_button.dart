@@ -24,6 +24,7 @@ class CalculatorButton extends StatelessWidget {
   final Color? iconColor;
   final double? iconSize;
   final TextStyle? textStyle;
+  final FontWeight? fontWeight;  // Add fontWeight parameter
   final double textSizeMultiplier;
   final int flex;
   final double? width;
@@ -44,6 +45,7 @@ class CalculatorButton extends StatelessWidget {
     this.iconColor,
     this.iconSize,
     this.textStyle,
+    this.fontWeight,  // Add fontWeight parameter
     this.textSizeMultiplier = 1.0,
     this.flex = 1,
     this.width,
@@ -80,12 +82,42 @@ class CalculatorButton extends StatelessWidget {
       case ButtonType.function:
         return Colors.orange.shade600;
       default:
-        return Colors.black87;
+        return Colors.black;
     }
   }
 
-  Color _getIconColor() {
-    return iconColor ?? _getTextColor();
+  FontWeight _getFontWeight() {
+    // If fontWeight is explicitly provided, use it
+    if (fontWeight != null) {
+      return fontWeight!;
+    }
+
+    final trimmedText = text.trim();
+
+    // Special fontWeight for basic operators and functions
+    const basicOperators = {'C', '( )', '÷', '×', '-', '+','%',"="};
+    if (basicOperators.contains(trimmedText)) {
+      return FontWeight.w500; // Slightly bolder for basic operators
+    }
+
+    // Apply w500 to mathematical symbols and scientific functions
+    const lightWeightSymbols = {
+      '³√', '√', '^',
+      'sin', 'cos', 'tan', 'ln', 'log', '!',
+      'φ', 'e', 'π'
+    };
+
+    if (lightWeightSymbols.contains(trimmedText)) {
+      return FontWeight.w500;
+    }
+
+    // Keep equals button normal weight for better visibility
+    if (type == ButtonType.equals) {
+      return FontWeight.normal;
+    }
+
+    // All other buttons (numbers, parentheses, etc.) use w500
+    return FontWeight.w500;
   }
 
   double _getBaseFontSize() {
@@ -97,15 +129,9 @@ class CalculatorButton extends StatelessWidget {
       return 16.0;
     }
 
-    if (isExpandedMode) {
-      if (text.length > 4) return 10.0;
-      if (text.length > 2) return 12.0;
-      return 16.0;
-    } else {
-      if (text.length > 4) return 14.0;
-      if (text.length > 2) return 16.0;
-      return 20.0;
-    }
+    return isExpandedMode
+        ? (text.length > 4 ? 10.0 : text.length > 2 ? 12.0 : 16.0)
+        : (text.length > 4 ? 14.0 : text.length > 2 ? 16.0 : 20.0);
   }
 
   double _getDefaultHeight() {
@@ -120,25 +146,17 @@ class CalculatorButton extends StatelessWidget {
 
   Widget _buildIconShapedButton() {
     final effectiveIconSize = _getIconSize();
-    final touchAreaSize = effectiveIconSize + 1; // 8px padding on each side
-    final margin = EdgeInsets.symmetric(horizontal: 1, vertical: 0);
-
-    final containerWidth = width ?? touchAreaSize;
-    final containerHeight = height ?? touchAreaSize;
-
-    // Ensure minimum touch target size (44x44 per Material Design)
-    final finalWidth = math.max(containerWidth, 44.0);
-    final finalHeight = math.max(containerHeight, 44.0);
+    final touchAreaSize = math.max(effectiveIconSize + 8, 44.0);
 
     return Container(
-      margin: margin,
-      width: finalWidth,
-      height: finalHeight,
+      margin: EdgeInsets.symmetric(horizontal: 1, vertical: 0),
+      width: width ?? touchAreaSize,
+      height: height ?? touchAreaSize,
       child: enableTouchEffect
           ? Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(finalWidth / 2),
+          borderRadius: BorderRadius.circular(touchAreaSize / 2),
           onTap: onPressed,
           child: Container(
             decoration: BoxDecoration(
@@ -149,7 +167,7 @@ class CalculatorButton extends StatelessWidget {
               child: Icon(
                 icon,
                 size: effectiveIconSize,
-                color: _getIconColor(),
+                color: iconColor ?? _getTextColor(),
               ),
             ),
           ),
@@ -157,17 +175,11 @@ class CalculatorButton extends StatelessWidget {
       )
           : GestureDetector(
         onTap: onPressed,
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.transparent,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Icon(
-              icon,
-              size: effectiveIconSize,
-              color: _getIconColor(),
-            ),
+        child: Center(
+          child: Icon(
+            icon,
+            size: effectiveIconSize,
+            color: iconColor ?? _getTextColor(),
           ),
         ),
       ),
@@ -176,12 +188,11 @@ class CalculatorButton extends StatelessWidget {
 
   Widget _buildRoundedButton() {
     final animatedFontSize = _getBaseFontSize() * textSizeMultiplier;
-    final margin = EdgeInsets.symmetric(horizontal: 5, vertical: 4);
 
     final buttonContent = Container(
       height: _getDefaultHeight(),
       width: width,
-      margin: margin,
+      margin: EdgeInsets.symmetric(horizontal: 5, vertical: 4),
       decoration: BoxDecoration(
         color: _getButtonColor(),
         borderRadius: BorderRadius.circular(8.0),
@@ -202,23 +213,13 @@ class CalculatorButton extends StatelessWidget {
       ),
     );
 
-    if (width == null) {
-      return Expanded(
-        flex: flex,
-        child: buttonContent,
-      );
-    }
-
-    return buttonContent;
+    return width == null
+        ? Expanded(flex: flex, child: buttonContent)
+        : buttonContent;
   }
 
   Widget _buildButtonContent(double animatedFontSize) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Center(
-        child: _buildButtonChild(animatedFontSize),
-      ),
-    );
+    return Center(child: _buildButtonChild(animatedFontSize));
   }
 
   Widget _buildButtonChild(double animatedFontSize) {
@@ -226,7 +227,7 @@ class CalculatorButton extends StatelessWidget {
         ? Icon(
       icon,
       size: _getIconSize(),
-      color: _getIconColor(),
+      color: iconColor ?? _getTextColor(),
     )
         : null;
 
@@ -238,17 +239,19 @@ class CalculatorButton extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
         fontSize: animatedFontSize,
-        fontWeight: FontWeight.w500,
+        fontWeight: _getFontWeight(),
         color: _getTextColor(),
+        height: 1.0,
       ),
     )
         : null;
 
-    // If both icon and text exist, show them side by side
+    // Show both icon and text side by side if both exist
     if (iconWidget != null && textWidget != null) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           iconWidget,
           SizedBox(width: 4),
@@ -257,17 +260,13 @@ class CalculatorButton extends StatelessWidget {
       );
     }
 
-    // Return whichever exists
     return iconWidget ?? textWidget ?? SizedBox.shrink();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Special handling for icon-shaped buttons
-    if (shape == ButtonShape.iconShaped && icon != null) {
-      return _buildIconShapedButton();
-    }
-
-    return _buildRoundedButton();
+    return shape == ButtonShape.iconShaped && icon != null
+        ? _buildIconShapedButton()
+        : _buildRoundedButton();
   }
 }
