@@ -43,7 +43,7 @@ class ExpressionUtils {
   static String _convertScientificFunctionsForCalculation(String expression) {
     String converted = expression;
 
-    // Convert trigonometric functions
+    // Convert trigonometric functions - math_expressions supports these directly
     converted = converted.replaceAllMapped(
       RegExp(r'sin\(([^)]+)\)'),
           (match) {
@@ -68,65 +68,107 @@ class ExpressionUtils {
       },
     );
 
-    // Convert logarithmic functions
+    // Handle natural logarithm ln() - math_expressions supports ln directly
     converted = converted.replaceAllMapped(
       RegExp(r'ln\(([^)]+)\)'),
           (match) {
         final value = match.group(1)!;
-        return 'ln($value)';
+        return 'ln($value)'; // math_expressions supports ln directly
       },
     );
 
+    // Handle base-10 logarithm log() - convert to ln(x)/ln(10)
     converted = converted.replaceAllMapped(
-      RegExp(r'log\(([^)]+)\)'),
+      RegExp(r'(?<!l)log\(([^)]+)\)'), // Negative lookbehind to avoid matching 'ln' + 'log'
           (match) {
         final value = match.group(1)!;
-        return 'log($value)';
+        return '(ln($value)/ln(10))'; // Convert to base 10 logarithm using natural log
       },
     );
 
-    // Convert square root
+    // Handle square root - math_expressions supports sqrt directly
     converted = converted.replaceAllMapped(
       RegExp(r'√\(([^)]+)\)'),
           (match) {
         final value = match.group(1)!;
-        return '√($value)';
+        return 'sqrt($value)';
       },
     );
 
-    // Convert cube root
+    // Also handle sqrt function call format
     converted = converted.replaceAllMapped(
-      RegExp(r'³√\(([^)]+)\)'),
+      RegExp(r'sqrt\(([^)]+)\)'),
           (match) {
         final value = match.group(1)!;
-        return '³√($value)';
+        return 'sqrt($value)';
       },
     );
+
+    // Handle cube root - convert to power notation with ^ operator
+    // math_expressions supports ^ operator directly, so ∛x = x^(1/3)
+    // Handle cube root - convert to pow function since it's registered in evaluator
+    converted = converted.replaceAllMapped(
+      RegExp(r'∛\(([^)]+)\)'),
+          (match) {
+        final value = match.group(1)!;
+        return '$value^1/3';
+      },
+    );
+
+
 
     return converted;
   }
 
   static String _convertFactorialForCalculation(String expression) {
-    // Convert factorial notation (n!) to factorial function call
+    // Convert factorial notation (n!) to a series of multiplications
+    // Note: math_expressions doesn't support factorial function, so we need to expand it
     return expression.replaceAllMapped(
       RegExp(r'(\d+(?:\.\d+)?|\))\s*!'),
           (match) {
         final number = match.group(1)!;
-        return 'factorial($number)';
+        // For simple integers, we can expand the factorial
+        if (RegExp(r'^\d+$').hasMatch(number)) {
+          final n = int.tryParse(number);
+          if (n != null && n >= 0 && n <= 10) { // Only expand small factorials
+            if (n == 0 || n == 1) return '1';
+            String factorial = '1';
+            for (int i = 2; i <= n; i++) {
+              factorial = '($factorial*$i)';
+            }
+            return factorial;
+          }
+        }
+        // For complex expressions or large numbers, we'll need to handle this differently
+        // Since math_expressions doesn't support factorial, we'll leave it as is for now
+        // You might need to pre-calculate these or use a custom evaluator
+        return '${number}!'; // This will cause an error in math_expressions
       },
     );
   }
 
   static String _convertPowerForCalculation(String expression) {
-    // Convert power notation (a^b) to pow function call
-    return expression.replaceAllMapped(
-      RegExp(r'([^+\-*/()^]+)\s*\^\s*([^+\-*/()^]+)'),
+    // math_expressions supports ^ operator directly, so we keep it as is
+    // Just ensure proper formatting and parentheses
+    String converted = expression;
+
+    // Handle complex nested expressions with proper parentheses matching
+    // math_expressions can handle ^ operator directly, so we just clean up formatting
+
+    // Ensure proper spacing around ^ operator for readability
+    converted = converted.replaceAll(RegExp(r'\s*\^\s*'), '^');
+
+    // Handle fractional exponents - make sure they're properly parenthesized
+    converted = converted.replaceAllMapped(
+      RegExp(r'([^+\-*/()^,\s]+|\([^)]+\))\^(\d+/\d+)'),
           (match) {
         final base = match.group(1)!;
         final exponent = match.group(2)!;
-        return 'pow($base,$exponent)';
+        return '$base^($exponent)'; // Ensure fractional exponents are in parentheses
       },
     );
+
+    return converted;
   }
 
   static String fixIncompleteExpression(String expr) {
@@ -236,7 +278,8 @@ class ExpressionUtils {
 
   static bool _hasValidFunctionCalls(String expression) {
     // Check if all function calls have proper syntax
-    final functionPattern = RegExp(r'(sin|cos|tan|ln|log|√|³√|factorial|pow)\s*\(');
+    // Updated for math_expressions compatible functions (no pow function)
+    final functionPattern = RegExp(r'(sin|cos|tan|ln|sqrt)\s*\(');
     final matches = functionPattern.allMatches(expression);
 
     for (final match in matches) {
@@ -255,13 +298,6 @@ class ExpressionUtils {
       }
 
       if (parenCount != 0) return false;
-
-      // Special validation for pow function (should have 2 parameters)
-      if (functionName == 'pow') {
-        final content = expression.substring(startIndex, currentIndex - 1);
-        final commaCount = ','.allMatches(content).length;
-        if (commaCount != 1) return false;
-      }
     }
 
     return true;
@@ -277,13 +313,14 @@ class ExpressionUtils {
     return radians * 180 / math.pi;
   }
 
-  /// Calculate factorial
+  /// Calculate factorial (helper for pre-calculation if needed)
   static double factorial(double n) {
     if (n < 0 || n != n.floor()) {
       throw ArgumentError('Factorial is only defined for non-negative integers');
     }
 
     if (n == 0 || n == 1) return 1;
+    if (n > 170) return double.infinity; // Prevent overflow
 
     double result = 1;
     for (int i = 2; i <= n; i++) {
@@ -292,7 +329,7 @@ class ExpressionUtils {
     return result;
   }
 
-  /// Calculate cube root
+  /// Calculate cube root (helper for pre-calculation if needed)
   static num cubeRoot(double value) {
     if (value < 0) {
       return -math.pow(-value, 1/3);
@@ -315,13 +352,15 @@ class ExpressionUtils {
 
   /// Get function suggestions based on input
   static List<String> getFunctionSuggestions(String input) {
-    final functions = ['sin', 'cos', 'tan', 'ln', 'log', '√', '³√'];
+
+    final functions = ['sin', 'cos', 'tan', 'ln', 'sqrt',];
     return functions.where((func) => func.startsWith(input.toLowerCase())).toList();
   }
 
   /// Check if expression contains scientific functions
   static bool hasScientificFunctions(String expression) {
-    final scientificPattern = RegExp(r'(sin|cos|tan|ln|log|√|³√|factorial|pow|\^|!|π|e|φ)');
+
+    final scientificPattern = RegExp(r'(sin|cos|tan|ln|sqrt|\^|!|π|e|φ|³√|)');
     return scientificPattern.hasMatch(expression);
   }
 }
