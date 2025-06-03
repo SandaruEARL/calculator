@@ -19,7 +19,6 @@ class CalculationRepositoryImpl implements CalculationRepository {
   @override
   Future<Either<Failure, double>> calculate(String expression) async {
     try {
-      // Simple expression parser (you might want to use a proper math parser)
       final result = await evaluator.evaluate(expression);
       if (result.isInfinite || result.isNaN) {
         return Left(DivisionByZeroFailure());
