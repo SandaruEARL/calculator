@@ -262,12 +262,13 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
     );
   }
 
-  // Optimized swap and backspace row with dynamic rad/deg button
+  // Fixed swap and backspace row with proper alignment
   Widget _buildSwapAndBackspaceRow(BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
     return Container(
       height: 48,
       margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10), // Minimal horizontal margin
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // Center align all children
         children: [
           CalculatorButton(
             icon: _showExpandedButtons ? Icons.functions : Icons.calculate,
@@ -290,22 +291,21 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
           // Flexible spacing to push backspace to the right
           Spacer(),
 
-          CalculatorButton(
-            width: 50,
-            height: 30,
-            icon: Icons.close,
-            iconSize: 20,
-            iconColor: Colors.white,
-            backgroundColor: Colors.orange,
-            shape: ButtonShape.arrow,
-            arrowWidth: 50,
-            arrowDirection: ArrowDirection.left,
-            enableTouchEffect: false,
-            borderRadius: 3,
-            text: "",
-            onPressed: basicVM.onBackspacePressed,
-            isExpandedMode: _showExpandedButtons,
-            keepFixedHeight: true, // Keep fixed height regardless of expanded mode
+          // Properly aligned backspace button with disabled touch effect
+          Container(
+            height: 48, // Match the container height for proper alignment
+            child: CalculatorButton(
+              icon: Icons.backspace,
+              iconSize: 35,
+              iconColor: Colors.orange,
+              backgroundColor: Colors.white,
+              enableTouchEffect: false,
+              text: "",
+              shape: ButtonShape.iconShaped,
+              onPressed: basicVM.onBackspacePressed,
+              isExpandedMode: _showExpandedButtons,
+              keepFixedHeight: true, // Keep fixed height regardless of expanded mode
+            ),
           )
         ],
       ),
