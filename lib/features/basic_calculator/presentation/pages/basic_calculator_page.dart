@@ -138,29 +138,92 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
   void _handleScientificFunction(String function, BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
     final scientificFunction = sciVM.getScientificFunction(function);
     if (scientificFunction.isNotEmpty) {
-      // For functions that need parentheses, insert them
+      // Check if we need to add multiplication before the function
+      final trimmedExpr = basicVM.expression.trimRight();
+      final lastChar = trimmedExpr.isNotEmpty ? trimmedExpr.characters.last : '';
+
+      if (sciVM.needsMultiplicationBefore(lastChar)) {
+        basicVM.onOperatorPressed('*');
+      }
+
+      // Add the function to the expression
       basicVM.onNumberPressed(scientificFunction);
     }
   }
 
   // Handle scientific constant button press
   void _handleScientificConstant(String constant, BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
-    final constantValue = sciVM.getConstantValue(constant);
-    if (constantValue.isNotEmpty) {
-      basicVM.onNumberPressed(constantValue);
+    // Check if we need to add multiplication before the constant
+    final trimmedExpr = basicVM.expression.trimRight();
+    final lastChar = trimmedExpr.isNotEmpty ? trimmedExpr.characters.last : '';
+
+    if (sciVM.needsMultiplicationBefore(lastChar)) {
+      basicVM.onOperatorPressed('*');
     }
+
+    // Insert the constant symbol directly, not its value
+    basicVM.onNumberPressed(constant); // Use the symbol (π, e, φ) not the numerical value
   }
 
   // Handle power function button press
   void _handlePowerFunction(String power, BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
-    final powerFunction = sciVM.getPowerFunction(power);
-    basicVM.onOperatorPressed(powerFunction);
+    if (sciVM.isValidForPower(basicVM.expression)) {
+      // For power operations, we need to handle them differently
+      switch (power) {
+        case 'x²':
+          basicVM.onOperatorPressed('^');
+          basicVM.onNumberPressed('2');
+          break;
+        case 'x³':
+          basicVM.onOperatorPressed('^');
+          basicVM.onNumberPressed('3');
+          break;
+        case '^':
+          basicVM.onOperatorPressed('^');
+          break;
+        case '10ˣ':
+        // Handle 10^x specially
+          final trimmedExpr = basicVM.expression.trimRight();
+          final lastChar = trimmedExpr.isNotEmpty ? trimmedExpr.characters.last : '';
+          if (sciVM.needsMultiplicationBefore(lastChar)) {
+            basicVM.onOperatorPressed('*');
+          }
+          basicVM.onNumberPressed('10^(');
+          break;
+        case '2ˣ':
+        // Handle 2^x specially
+          final trimmedExpr = basicVM.expression.trimRight();
+          final lastChar = trimmedExpr.isNotEmpty ? trimmedExpr.characters.last : '';
+          if (sciVM.needsMultiplicationBefore(lastChar)) {
+            basicVM.onOperatorPressed('*');
+          }
+          basicVM.onNumberPressed('2^(');
+          break;
+        case 'eˣ':
+        // Handle e^x specially
+          final trimmedExpr = basicVM.expression.trimRight();
+          final lastChar = trimmedExpr.isNotEmpty ? trimmedExpr.characters.last : '';
+          if (sciVM.needsMultiplicationBefore(lastChar)) {
+            basicVM.onOperatorPressed('*');
+          }
+          basicVM.onNumberPressed('${sciVM.getConstantValue('e')}^(');
+          break;
+        default:
+          basicVM.onOperatorPressed('^');
+          break;
+      }
+    }
   }
 
   // Handle factorial button press
   void _handleFactorial(BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
     if (sciVM.isValidForFactorial(basicVM.expression)) {
-      basicVM.onOperatorPressed('!');
+      // Add factorial operator directly
+      final currentExpression = basicVM.expression;
+      final newExpression = currentExpression + '!';
+
+      // Update the expression directly
+      basicVM.onNumberPressed('!');
     }
   }
 
@@ -169,7 +232,7 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
     return ClipRect(
       child: SizeTransition(
         sizeFactor: _slideAnimation,
-        axisAlignment: -1.0, // Align to top
+        axisAlignment: -1.0,
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: Container(
@@ -194,9 +257,9 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
 
                     _buildExpandedButtonRow([
                       _buildExpandedButton('!', () => _handleFactorial(basicVM, sciVM), ButtonType.function),
-                      _buildExpandedButton('³√', () => _handleScientificFunction('³√', basicVM, sciVM), ButtonType.function),
+                      _buildExpandedButton('³√', () => _handleScientificFunction('∛', basicVM, sciVM), ButtonType.function),
                       _buildExpandedButton('√', () => _handleScientificFunction('√', basicVM, sciVM), ButtonType.function),
-                      _buildExpandedButton('^', () => basicVM.onOperatorPressed('^'), ButtonType.operator),
+                      _buildExpandedButton('^', () => _handlePowerFunction('^', basicVM, sciVM), ButtonType.operator),
                     ]),
                   ],
                 );
