@@ -1,9 +1,8 @@
-import 'package:calculator/features/home/presentation/pages/home_page.dart';
+// Updated main.dart to use CalculatorShell
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
-import 'app/app.dart';
-import 'features/basic_calculator/presentation/pages/basic_calculator_page.dart';
+import 'features/basic_calculator/calculator_shell.dart';
 import 'features/basic_calculator/presentation/viewmodels/basic_calculator_viewmodel.dart';
 import 'features/basic_calculator/basic_calculator_feature.dart';
 import 'features/basic_calculator/presentation/viewmodels/scientific_calculator_viewmodel.dart';
@@ -14,9 +13,7 @@ void main() async {
   final getIt = GetIt.instance;
   await BasicCalculatorFeature.register(getIt);
 
-
   runApp(MyApp());
-
 }
 
 class MyApp extends StatelessWidget {
@@ -37,8 +34,10 @@ class MyApp extends StatelessWidget {
             value: GetIt.instance<ScientificCalculatorViewModel>(),
           ),
         ],
-        child: BasicCalculatorPage(),
+        child: CalculatorShell(),
       ),
     );
   }
 }
+
+typedef ShowHistoryCallback = void Function();
