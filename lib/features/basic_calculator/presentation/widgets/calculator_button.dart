@@ -63,11 +63,11 @@ class CalculatorButton extends StatelessWidget {
       case ButtonType.number:
         return Colors.grey.shade300;
       case ButtonType.operator:
-        return Colors.grey.shade200;
+        return Colors.orange.shade400;
       case ButtonType.equals:
-        return Colors.orange.shade600;
+        return Colors.orange.shade400;
       case ButtonType.function:
-        return Colors.grey.shade200;
+        return Colors.orange.shade400;
     }
   }
 
@@ -78,9 +78,9 @@ class CalculatorButton extends StatelessWidget {
       case ButtonType.equals:
         return Colors.white;
       case ButtonType.operator:
-        return Colors.orange.shade600;
+        return Colors.white;
       case ButtonType.function:
-        return Colors.orange.shade600;
+        return Colors.white;
       default:
         return Colors.black;
     }
@@ -121,18 +121,21 @@ class CalculatorButton extends StatelessWidget {
   }
 
   double _getBaseFontSize() {
-    if (textStyle?.fontSize != null) {
-      return textStyle!.fontSize!;
-    }
+    if (textStyle?.fontSize != null) return textStyle!.fontSize!;
 
-    if (keepFixedHeight) {
-      return 16.0;
-    }
+    const short = 20.0;
+    const medium = 16.0;
+    const long = 14.0;
+
+    final length = text.length;
+
+    if (keepFixedHeight) return 16.0;
 
     return isExpandedMode
-        ? (text.length > 4 ? 10.0 : text.length > 2 ? 12.0 : 16.0)
-        : (text.length > 4 ? 14.0 : text.length > 2 ? 16.0 : 20.0);
+        ? (length > 4 ? long : length > 2 ? medium : short)
+        : (length > 4 ? medium : length > 2 ? short : 24.0);
   }
+
 
   double _getDefaultHeight() {
     if (height != null) return height!;

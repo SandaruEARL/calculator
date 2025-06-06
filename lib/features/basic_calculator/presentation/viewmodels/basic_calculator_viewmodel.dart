@@ -29,6 +29,7 @@ class BasicCalculatorViewModel extends ChangeNotifier {
     required this.clearHistory,
   });
 
+  bool _isCalculating = false; // Fixed: changed from final to mutable
   String _display = '0';
   String _expression = '';
   CalculatorState _state = CalculatorState.initial;
@@ -36,6 +37,11 @@ class BasicCalculatorViewModel extends ChangeNotifier {
   List<Calculation> _history = [];
   bool _shouldResetDisplay = false;
   String _liveResult = '';
+  bool _isEditingExpression = false;
+  bool get isEditingExpression => _isEditingExpression;
+
+  // Add this to prevent duplicate saves
+  String? _lastSavedExpression;
 
   // Getters
   String get display => _display;
@@ -50,6 +56,24 @@ class BasicCalculatorViewModel extends ChangeNotifier {
         .replaceAll('*', '×')
         .replaceAll('/', '÷');
   }
+
+  // New method to handle edited expressions from the display
+  // Enhanced setEditedExpression method with better state management
+  void setEditedExpression(String editedExpression) {
+    final clean = editedExpression.trim();
+
+    _expression = clean;
+    _display = clean;
+    _state = CalculatorState.initial;
+    _shouldResetDisplay = false;
+    _errorMessage = '';
+    _lastSavedExpression = null;
+
+    // Debounce live update if needed
+    _updateLiveResult();
+    notifyListeners();
+  }
+
 
   Future<void> _updateLiveResult() async {
     if (_expression.trim().isEmpty) {
@@ -76,7 +100,7 @@ class BasicCalculatorViewModel extends ChangeNotifier {
   void onNumberPressed(String number) {
     final trimmedExpr = _expression.trimRight();
     final lastChar = trimmedExpr.isNotEmpty ? trimmedExpr.characters.last : '';
-    final isLastCharOperator = '+-*/%'.contains(lastChar);
+    final isLastCharOperator = '+−*/%'.contains(lastChar);
 
     final isFreshStart = _shouldResetDisplay && _state == CalculatorState.result;
     final shouldContinueExpression = _shouldResetDisplay && isLastCharOperator;
@@ -246,43 +270,69 @@ class BasicCalculatorViewModel extends ChangeNotifier {
   }
 
   Future<void> onEqualsPressed() async {
+    // Prevent multiple simultaneous calculations
+    if (_isCalculating) return;
+
     if (_expression.isEmpty) return;
 
+    // Set calculating state and prevent further calls
+    _isCalculating = true;
     _state = CalculatorState.calculating;
     notifyListeners();
 
-    final fixedExpression = ExpressionUtils.fixIncompleteExpression(_expression);
+    try {
+      final fixedExpression = ExpressionUtils.fixIncompleteExpression(_expression);
 
-    final result = await calculate(fixedExpression);
-
-    result.fold(
-          (failure) {
-        _errorMessage = failure.message;
-        _state = CalculatorState.error;
-        _shouldResetDisplay = true;
-      },
-          (value) async {
-        _display = ResultFormatter.formatResult(value);
-
+      // Check if this expression was already saved to prevent duplicates
+      if (_lastSavedExpression == fixedExpression) {
+        _isCalculating = false;
+        // Still allow the result state for editing
         _state = CalculatorState.result;
-        _shouldResetDisplay = true;
+        notifyListeners();
+        return;
+      }
 
-        // Save calculation with the fixed expression
-        final calculation = Calculation(
-          expression: fixedExpression,
-          result: value,
-          timestamp: DateTime.now(),
-        );
+      final result = await calculate(fixedExpression);
 
-        await saveCalculation(calculation);
+      result.fold(
+            (failure) {
+          _errorMessage = failure.message;
+          _state = CalculatorState.error;
+          _shouldResetDisplay = true;
+        },
+            (value) async {
+          _display = ResultFormatter.formatResult(value);
+          _state = CalculatorState.result;
 
-        // Optionally update _expression to fixed version so UI reflects it
-        _expression = fixedExpression;
-      },
-    );
+          // Don't auto-reset display for editing support
+          _shouldResetDisplay = false;
 
-    _updateLiveResult();
-    notifyListeners();
+          // Save calculation with the fixed expression
+          final calculation = Calculation(
+            expression: fixedExpression,
+            result: value,
+            timestamp: DateTime.now(),
+          );
+
+          await saveCalculation(calculation);
+
+          // Mark this expression as saved to prevent duplicates
+          _lastSavedExpression = fixedExpression;
+
+          // Refresh history without triggering extra notifyListeners
+          await _refreshHistory();
+
+          // Update expression to fixed version so UI reflects it
+          _expression = fixedExpression;
+        },
+      );
+
+      _updateLiveResult();
+    } finally {
+      // Always reset the calculating flag
+      _isCalculating = false;
+      notifyListeners();
+    }
   }
 
   void onClearPressed() {
@@ -292,8 +342,8 @@ class BasicCalculatorViewModel extends ChangeNotifier {
     _errorMessage = '';
     _shouldResetDisplay = false;
     _liveResult = '';
+    _lastSavedExpression = null; // Reset the saved expression tracker
     notifyListeners();
-
   }
 
   void onBackspacePressed() {
@@ -370,11 +420,71 @@ class BasicCalculatorViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _refreshHistory() async {
+    final result = await getCalculationHistory();
+    result.fold(
+          (failure) {
+        // Optionally log or handle silently
+        debugPrint('Failed to refresh history: ${failure.message}');
+      },
+          (calculations) {
+        _history = calculations.reversed.toList();
+        // Removed notifyListeners() here to prevent duplicate notifications
+      },
+    );
+  }
+
   void clearExpression() {
     _display = '0';
     _expression = '';
     _liveResult = '';
     _state = CalculatorState.initial;
+    _lastSavedExpression = null; // Reset the saved expression tracker
     notifyListeners();
   }
+
+  void startNewCalculation() {
+    _shouldResetDisplay = true;
+    _lastSavedExpression = null;
+    notifyListeners();
+  }
+
+  bool get canEditExpression {
+    return _state == CalculatorState.result &&
+        !_errorMessage.contains('Error') &&
+        _expression.isNotEmpty;
+  }
+
+  void setExpression(String expression) {
+    _expression = expression.trim();
+    _display = _expression.isEmpty ? '0' : _expression;
+    _state = CalculatorState.initial;
+    _errorMessage = '';
+    _shouldResetDisplay = false;
+    _lastSavedExpression = null;
+
+    _updateLiveResult();
+    notifyListeners();
+  }
+
+  void startEditingExpression() {
+    _isEditingExpression = true;
+    notifyListeners();
+  }
+
+  void stopEditingExpression() {
+    _isEditingExpression = false;
+    notifyListeners();
+  }
+
+  void updateExpressionFromDisplay(String rawInput) {
+    // Optionally sanitize: replace '×' with '*', '÷' with '/', etc.
+    final sanitized = rawInput.replaceAll('×', '*').replaceAll('÷', '/');
+    _expression = sanitized;
+    _liveResult = _updateLiveResult as String; // Your existing logic
+    notifyListeners();
+  }
+
+
+
 }

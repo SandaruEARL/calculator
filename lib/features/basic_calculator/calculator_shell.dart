@@ -55,7 +55,7 @@ class _CalculatorShellState extends State<CalculatorShell>
 
     _transitionController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 400),
     );
 
     _bottomSheetController = AnimationController(
@@ -75,7 +75,7 @@ class _CalculatorShellState extends State<CalculatorShell>
     // Calculator slides slowly throughout the entire animation duration
     _calculatorSlideAnimation = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(-0.3, 0.0),
+      end: const Offset(-0.05, 0.0),
     ).animate(CurvedAnimation(
       parent: _transitionController,
       curve: const Interval(0.0, 1.0, curve: Curves.easeOutSine),
@@ -249,7 +249,6 @@ class _CalculatorShellState extends State<CalculatorShell>
     return RepaintBoundary(
       key: _historyKey,
       child: HistoryPage(
-        history: viewModel.history,
         onClearHistory: () {
           viewModel.clearCalculationHistory();
           _cachedHistoryPage = null; // Clear cache when history changes
@@ -270,32 +269,29 @@ class _CalculatorShellState extends State<CalculatorShell>
 
   void _showHistoryFromDrawer() async {
     if (_currentState == NavigationState.drawer) {
-      // First hide the bottom sheet
-      await _bottomSheetController.reverse();
-
-      if (!mounted) return;
-
-      // Capture calculator screenshot after bottom sheet is hidden
-      _calculatorScreenshot = await _captureScreenshot(_calculatorKey);
-
-      if (!mounted) return;
-
-      // Update state to history
       setState(() {
         _currentState = NavigationState.history;
         _isTransitioning = true;
       });
 
-      // Wait for the history page to be built and rendered
-      await WidgetsBinding.instance.endOfFrame;
-      await Future.delayed(const Duration(milliseconds: 100)); // Reduced delay
+      // Start closing the drawer (takes 300ms)
+      _bottomSheetController.reverse();
+
+      // Delay slightly to allow the bottom sheet to move halfway (e.g., 150ms)
+      await Future.delayed(const Duration(milliseconds: 150));
 
       if (!mounted) return;
 
-      // Start the transition animation
+      // Capture screenshot of calculator after drawer is halfway closed
+      _calculatorScreenshot = await _captureScreenshot(_calculatorKey);
+
+      if (!mounted) return;
+
+      // Start the history transition animation
       _transitionController.forward();
     }
   }
+
 
   void _hideDrawer() {
     if (_currentState == NavigationState.drawer) {

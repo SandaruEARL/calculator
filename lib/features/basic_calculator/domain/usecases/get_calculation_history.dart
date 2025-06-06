@@ -9,7 +9,7 @@ class GetCalculationHistory {
 
   GetCalculationHistory(this.repository);
 
-  Future<Either<Failure, List<Calculation>>> call() async {
-    return await repository.getCalculationHistory();
+  Future<Either<Failure, List<Calculation>>> call() {
+    return repository.getCalculationHistory();
   }
 }

@@ -5,11 +5,11 @@ abstract class Failure {
 }
 
 class DivisionByZeroFailure extends Failure {
-  const DivisionByZeroFailure() : super('Division by zero is not allowed');
+  const DivisionByZeroFailure() : super('ERROR');
 }
 
 class InvalidExpressionFailure extends Failure {
-  const InvalidExpressionFailure() : super('Invalid mathematical expression');
+  const InvalidExpressionFailure() : super('ERROR');
 }
 
 class StorageFailure extends Failure {

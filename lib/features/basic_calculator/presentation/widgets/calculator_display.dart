@@ -5,9 +5,10 @@ import '../viewmodels/basic_calculator_viewmodel.dart';
 
 class CalculatorDisplay extends StatefulWidget {
   final String expression;
-  final String result; // this will be the evaluated answer or error text
+  final String result;
   final CalculatorState state;
   final String liveResult;
+  final bool isCompactMode; // Add this parameter
 
   const CalculatorDisplay({
     Key? key,
@@ -15,6 +16,7 @@ class CalculatorDisplay extends StatefulWidget {
     required this.result,
     required this.liveResult,
     required this.state,
+    this.isCompactMode = false, // Default to false
   }) : super(key: key);
 
   @override
@@ -74,120 +76,122 @@ class _CalculatorDisplayState extends State<CalculatorDisplay> {
         ? widget.result
         : widget.liveResult;
 
-    final shouldShowResult = textToShow.isNotEmpty;
+    final hasResult = textToShow.isNotEmpty;
 
-    return Container(
-      width: double.infinity,
-      height: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-      decoration: BoxDecoration(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        height: double.infinity,
         color: Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          // Calculate available height after padding
-          final availableHeight = constraints.maxHeight - 32; // 12 + 20 padding
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Dynamic font size calculation based on available space and compact mode
+            double expressionFontSize, resultFontSize;
 
-          // Reserve space for spacing between expression and result
-          final spacingHeight = shouldShowResult ? 12.0 : 0.0;
-          final contentHeight = availableHeight - spacingHeight;
+            // Adjust font sizes based on compact mode
+            final fontSizeMultiplier = widget.isCompactMode ? 3 : 3;
 
-          // Dynamic font size calculation based on available space
-          double expressionFontSize, resultFontSize;
-
-          if (shouldShowResult) {
-            // When showing result, split the space proportionally
-            if (isResultFinal) {
+            if (isResultFinal && hasResult) {
               // Result is primary (larger), expression is secondary (smaller)
-              expressionFontSize = (contentHeight * 0.35).clamp(16.0, 32.0);
-              resultFontSize = (contentHeight * 0.65).clamp(24.0, 56.0);
+              expressionFontSize = (constraints.maxHeight * 0.10 * fontSizeMultiplier).clamp(12.0, 26.0);
+              resultFontSize = (constraints.maxHeight * 0.16 * fontSizeMultiplier).clamp(18.0, 42.0);
             } else {
               // Expression is primary (larger), result is secondary (smaller)
-              expressionFontSize = (contentHeight * 0.65).clamp(24.0, 56.0);
-              resultFontSize = (contentHeight * 0.35).clamp(16.0, 32.0);
+              expressionFontSize = (constraints.maxHeight * 0.16 * fontSizeMultiplier).clamp(18.0, 42.0);
+              resultFontSize = (constraints.maxHeight * 0.10 * fontSizeMultiplier).clamp(12.0, 26.0);
             }
-          } else {
-            // Only expression showing, use most of the available space
-            expressionFontSize = (contentHeight * 0.8).clamp(24.0, 64.0);
-            resultFontSize = 0; // Not used
-          }
 
-          // Swap colors based on state
-          final Color expressionColor = isResultFinal
-              ? (isError ? Colors.redAccent : Colors.grey[400]!)
-              : (isError ? Colors.redAccent : Colors.white);
+            // Swap colors based on state
+            final Color expressionColor = isResultFinal
+                ? (isError ? Colors.redAccent : Colors.grey[500]!)
+                : (isError ? Colors.redAccent : Colors.black);
 
-          final Color resultColor = isResultFinal
-              ? (isError ? Colors.redAccent : Colors.white)
-              : (isError ? Colors.redAccent : Colors.grey[400]!);
+            final Color resultColor = isResultFinal
+                ? (isError ? Colors.redAccent : Colors.black)
+                : (isError ? Colors.redAccent : Colors.grey[500]!);
 
-          return Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Flexible expression with cursor
-              Flexible(
-                flex: shouldShowResult ? (isResultFinal ? 35 : 65) : 100,
-                child: GestureDetector(
-                  onLongPress: () {
-                    HapticFeedback.mediumImpact();
-                    context.read<BasicCalculatorViewModel>().clearExpression();
-                  },
+            // Dynamic height allocation - make both sections flexible
+            final expressionFlex = widget.isCompactMode ? 2 : 3; // Reduce expression space in compact mode
+            final resultFlex = widget.isCompactMode ? 1 : 2;     // Reduce result space in compact mode
+
+            return Column(
+              children: [
+                // Expression container - flexible height based on mode
+                Expanded(
+                  flex: 3,
                   child: Container(
                     width: double.infinity,
-                    child: TextField(
-                      cursorHeight: expressionFontSize * 0.8, // Dynamic cursor height
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      readOnly: true,
-                      showCursor: true,
-                      enableInteractiveSelection: true,
-                      cursorColor: isError ? Colors.redAccent : Colors.white,
-                      style: TextStyle(
-                        fontSize: expressionFontSize,
-                        fontWeight: FontWeight.bold,
-                        color: isError ? Colors.redAccent : expressionColor,
-                        height: 1.1, // Tighter line height
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(12),
+                        topRight: Radius.circular(12),
                       ),
-                      maxLines: null, // Allow unlimited lines
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                        isDense: true,
-                        contentPadding: EdgeInsets.zero,
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    alignment: Alignment.bottomRight,
+                    child: GestureDetector(
+                      onLongPress: () {
+                        HapticFeedback.mediumImpact();
+                        context.read<BasicCalculatorViewModel>().clearExpression();
+                      },
+                      child: TextField(
+                        cursorHeight: expressionFontSize * 1.2, // Dynamic cursor height
+                        controller: _controller,
+                        focusNode: _focusNode,
+                        readOnly: true,
+                        showCursor: true,
+                        enableInteractiveSelection: true,
+                        cursorColor: isError ? Colors.redAccent : Colors.orange,
+                        style: TextStyle(
+                          fontSize: expressionFontSize,
+                          fontWeight: FontWeight.normal,
+                          color: isError ? Colors.redAccent : expressionColor,
+                          height: 1.5,
+                        ),
+                        maxLines: null,
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          isCollapsed: true,
+                          isDense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                        textAlign: TextAlign.right,
                       ),
-                      textAlign: TextAlign.right,
                     ),
                   ),
                 ),
-              ),
 
-              if (shouldShowResult) ...[
-                SizedBox(height: spacingHeight),
-                // Flexible result
-                Flexible(
-                  flex: isResultFinal ? 65 : 35,
+                // Result container - flexible height based on mode
+                Expanded(
                   child: Container(
                     width: double.infinity,
+                    decoration: const BoxDecoration(
+                      borderRadius: BorderRadius.only(
+                        bottomLeft: Radius.circular(12),
+                        bottomRight: Radius.circular(12),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    alignment: Alignment.topRight,
                     child: Text(
-                      '= $textToShow',
+                      hasResult ? '= $textToShow' : '',
                       style: TextStyle(
                         fontSize: resultFontSize,
                         color: isError ? Colors.redAccent : resultColor,
                         fontWeight: FontWeight.w500,
-                        height: 1.1, // Tighter line height
+                        height: 1.1,
                       ),
-                      maxLines: null, // Allow unlimited lines
-                      overflow: TextOverflow.visible,
+                      maxLines: widget.isCompactMode ? 1 : 1, // Limit lines in compact mode
+                      overflow: TextOverflow.ellipsis, // Handle overflow gracefully
                       textAlign: TextAlign.right,
                     ),
                   ),
                 ),
               ],
-            ],
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

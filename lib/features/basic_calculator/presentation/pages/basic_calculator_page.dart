@@ -1,31 +1,46 @@
 // presentation/pages/basic_calculator_page.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-
 import '../viewmodels/basic_calculator_viewmodel.dart';
 import '../viewmodels/scientific_calculator_viewmodel.dart';
 import '../widgets/calculator_button.dart';
 import '../widgets/calculator_display.dart';
 import '../widgets/history_drawer.dart';
 
+typedef ShowHistoryCallback = void Function();
+
 class BasicCalculatorPage extends StatefulWidget {
+  final Animation<double>? animation;
+  final bool isSynchronizedTransition;
+  final ShowHistoryCallback? onShowHistory;
+
+  const BasicCalculatorPage({super.key, this.animation, this.isSynchronizedTransition = true, this.onShowHistory});
+
   @override
   _BasicCalculatorPageState createState() => _BasicCalculatorPageState();
+
 }
 
 class _BasicCalculatorPageState extends State<BasicCalculatorPage>
     with TickerProviderStateMixin {
+
   bool _showExpandedButtons = false;
   late AnimationController _animationController;
   late AnimationController _textSizeController;
   late Animation<double> _slideAnimation;
   late Animation<double> _fadeAnimation;
   late Animation<double> _textSizeAnimation;
+  late ShowHistoryCallback? onShowHistory;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _backgroundFadeAnimation;
+
+  // Animation for synchronized slide effect with history page
+  late Animation<Offset> _slideFromRightAnimation;
 
   // Constants for better performance and consistency
   static const double _bannerHeight = 50.0;
   static const double _expandedPanelHeight = 100.0; // 3 rows × 33px each
-  static const Duration _animationDuration = Duration(milliseconds: 300);
+  static const Duration _animationDuration = Duration(milliseconds: 250);
   static const Duration _textAnimationDuration = Duration(milliseconds: 250);
 
   // Pre-built widgets to avoid rebuilding during animations
@@ -48,6 +63,7 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
     _animationController = AnimationController(
       duration: _animationDuration,
       vsync: this,
+
     );
 
     // Separate controller for text size animation for better control
@@ -82,6 +98,51 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
       parent: _textSizeController,
       curve: Curves.easeInOutCubic,
     ));
+
+    // Synchronized slide animation for history page navigation
+    if (widget.animation != null && widget.isSynchronizedTransition) {
+      // When used in synchronized transition, animate background calculator
+      _slideFromRightAnimation = Tween<Offset>(
+        begin: Offset.zero, // Start at current position
+        end: const Offset(-0.3, 0.0), // Move slightly left (same direction as history)
+      ).animate(CurvedAnimation(
+        parent: widget.animation!,
+        curve: const Interval(0.1, 0.9, curve: Curves.easeInOutCubic),
+      ));
+
+      // Add scale animation for depth effect
+      _scaleAnimation = Tween<double>(
+        begin: 1.0,
+        end: 0.95,
+      ).animate(CurvedAnimation(
+        parent: widget.animation!,
+        curve: const Interval(0.2, 1.0, curve: Curves.easeInCubic),
+      ));
+
+      // Add fade animation
+      _fadeAnimation = Tween<double>(
+        begin: 1.0,
+        end: 0.7,
+      ).animate(CurvedAnimation(
+        parent: widget.animation!,
+        curve: const Interval(0.1, 0.8, curve: Curves.easeIn),
+      ));
+    } else if (widget.animation != null) {
+      // Regular slide from right animation (for coming back from history)
+      _slideFromRightAnimation = Tween<Offset>(
+        begin: const Offset(1.0, 0.0),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(
+        parent: widget.animation!,
+        curve: const Interval(0.0, 0.8, curve: Curves.easeOutCubic),
+      ));
+    } else {
+      // Fallback - no animation
+      _slideFromRightAnimation = Tween<Offset>(
+        begin: Offset.zero,
+        end: Offset.zero,
+      ).animate(kAlwaysCompleteAnimation);
+    }
   }
 
   void _buildStaticWidgets() {
@@ -218,10 +279,6 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
   // Handle factorial button press
   void _handleFactorial(BasicCalculatorViewModel basicVM, ScientificCalculatorViewModel sciVM) {
     if (sciVM.isValidForFactorial(basicVM.expression)) {
-      // Add factorial operator directly
-      final currentExpression = basicVM.expression;
-      final newExpression = currentExpression + '!';
-
       // Update the expression directly
       basicVM.onNumberPressed('!');
     }
@@ -360,7 +417,7 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
             child: CalculatorButton(
               icon: Icons.backspace,
               iconSize: 35,
-              iconColor: Colors.orange,
+              iconColor: Colors.orange.shade400,
               backgroundColor: Colors.white,
               enableTouchEffect: false,
               text: "",
@@ -378,7 +435,6 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
   // Basic calculator buttons with smooth text size animation
   Widget _buildBasicCalculatorButtons(BasicCalculatorViewModel viewModel) {
     return Expanded(
-      flex: 3,
       child: AnimatedBuilder(
         animation: _textSizeAnimation,
         builder: (context, child) {
@@ -448,64 +504,85 @@ class _BasicCalculatorPageState extends State<BasicCalculatorPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Calculator"),
-        backgroundColor: Colors.grey.shade100,
-        foregroundColor: Colors.orangeAccent,
-        elevation: 0, // Remove shadow to blend better
-        actions: [
-          Builder(
-            builder: (context) => IconButton(
-              icon: Icon(Icons.history),
-              onPressed: () => Scaffold.of(context).openEndDrawer(),
-            ),
-          ),
-        ],
-      ),
-      endDrawer: Consumer<BasicCalculatorViewModel>(
-        builder: (context, viewModel, child) {
-          return HistoryDrawer(
-            history: viewModel.history,
-            onClearHistory: viewModel.clearCalculationHistory,
-          );
-        },
-      ),
-      body: Consumer2<BasicCalculatorViewModel, ScientificCalculatorViewModel>(
-        builder: (context, basicVM, sciVM, child) {
-          return Column( // Removed padding to use full width
-            children: [
-              // Display Section - Takes full width and uses available height
-              Expanded(
-                flex: 3,
-                child: CalculatorDisplay(
-                  expression: basicVM.expression,
-                  result: basicVM.state == CalculatorState.error
-                      ? basicVM.errorMessage
-                      : basicVM.display,
-                  state: basicVM.state,
-                  liveResult: basicVM.liveResult,
-                ),
+    return SlideTransition(
+      position: _slideFromRightAnimation,
+      child: SafeArea(
+        child: Scaffold(
+          appBar: AppBar(
+            title: Text("Calculator"),
+            backgroundColor: Colors.grey.shade100,
+            foregroundColor: Colors.orangeAccent,
+            elevation: 0, // Remove shadow to blend better
+            actions: [
+              Consumer<BasicCalculatorViewModel>(
+                builder: (context, viewModel, child) {
+                  return IconButton(
+                    icon: Icon(Icons.history),
+                    onPressed: () {
+                      if (widget.onShowHistory != null) {
+                        widget.onShowHistory!();
+                      } else {
+                        // Fallback to bottom sheet if no callback provided
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (_) => HistoryBottomSheet(
+                            history: viewModel.history,
+                            onClearHistory: viewModel.clearCalculationHistory,
+                          ),
+                        );
+                      }
+                    },
+                  );
+                },
               ),
-
-              // Swap and Backspace button row with dynamic rad/deg button
-              _buildSwapAndBackspaceRow(basicVM, sciVM),
-
-              // Expandable button panel with optimized animations
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10),
-                child: _buildExpandedButtonPanel(),
-              ),
-
-              // Basic calculator buttons with smooth text animation
-              _buildBasicCalculatorButtons(basicVM),
-
-              // Fixed banner space at the bottom
-              _bannerPlaceholder,
             ],
-          );
-        },
+          ),
+
+          body: Consumer2<BasicCalculatorViewModel, ScientificCalculatorViewModel>(
+            builder: (context, basicVM, sciVM, child) {
+              return Column( // Removed padding to use full width
+                children: [
+                  // Display Section - Takes full width and uses available height
+
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * (_showExpandedButtons ? 0.30 : 0.34),
+                      child: CalculatorDisplay(
+                        expression: basicVM.expression,
+                        result: basicVM.state == CalculatorState.error
+                            ? basicVM.errorMessage
+                            : basicVM.display,
+                        state: basicVM.state,
+                        liveResult: basicVM.liveResult,
+                        isCompactMode: _showExpandedButtons,
+                      ),
+                    ),
+
+
+                  // Swap and Backspace button row with dynamic rad/deg button
+                  _buildSwapAndBackspaceRow(basicVM, sciVM),
+
+                  // Expandable button panel with optimized animations
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 10),
+                    child: _buildExpandedButtonPanel(),
+                  ),
+
+                  // Basic calculator buttons with smooth text animation
+                  _buildBasicCalculatorButtons(basicVM),
+
+                  // Fixed banner space at the bottom
+                  _bannerPlaceholder,
+                ],
+              );
+
+            },
+          ),
+        ),
       ),
+
     );
+
   }
 }
